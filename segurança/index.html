@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internet Segura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            overflow: hidden;
+        }
+        .slide {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .slide.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+        .game-scene {
+            position: relative;
+            height: 200px;
+            background-color: #dbeafe;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 4px solid #073B4C;
+            background-image: linear-gradient(rgba(255,255,255,0.2) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.2) 2px, transparent 2px);
+            background-size: 40px 40px;
+        }
+        #thief {
+            position: absolute;
+            font-size: 4rem;
+            bottom: 10px;
+            left: -80px;
+            transition: all 1s ease-in-out;
+        }
+        #vault {
+            position: absolute;
+            font-size: 6rem;
+            bottom: 0;
+            right: 20px;
+            transition: transform 0.3s, filter 0.3s;
+        }
+        #vault.safe {
+             filter: drop-shadow(0 0 15px #06D6A0);
+        }
+        #shield {
+            position: absolute;
+            font-size: 8rem;
+            bottom: -10px;
+            right: 10px;
+            color: #118AB2;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s ease-out;
+            filter: drop-shadow(0 0 10px #118AB2);
+        }
+        #shield.active {
+            opacity: 1;
+            transform: scale(1);
+            animation: powerUp 0.3s forwards, pulse 2s infinite 0.3s;
+        }
+        @keyframes powerUp {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px #118AB2); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 20px #118AB2); }
+        }
+        .zap-effect {
+            position: absolute;
+            font-size: 3rem;
+            font-weight: 900;
+            color: #FFD166;
+            text-shadow: 0 0 5px #000;
+            opacity: 0;
+            animation: zap 0.5s forwards;
+        }
+        @keyframes zap {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        #treasure {
+            position: absolute;
+            font-size: 3rem;
+            bottom: 40px;
+            right: 55px;
+            opacity: 0;
+            transition: all 0.5s ease-out;
+        }
+        #treasure.stolen {
+            opacity: 1;
+            transform: translate(-250px, -50px) rotate(360deg);
+        }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-6px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+        .dizzy { animation: dizzy 1s forwards; }
+        @keyframes dizzy {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(720deg) scale(0); opacity: 0; }
+        }
+        .dance { animation: dance 1s infinite; }
+        @keyframes dance {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(-15deg); }
+            75% { transform: translateY(-10px) rotate(15deg); }
+        }
+        .clickable-card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .clickable-card:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        .animate-bounce-slow { animation: bounce 2s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+            50% { transform: translateY(0); animation-timing-function: cubic-bezier(0,0,0.2,1); }
+        }
+        #treasure-scene {
+            background: linear-gradient(to bottom, #dbeafe, #eff6ff);
+            border: 4px solid #118AB2;
+        }
+        .gem {
+            position: absolute;
+            cursor: pointer;
+            padding: 8px 12px;
+            background-color: #e5e7eb;
+            color: #374151;
+            border-radius: 50%;
+            border: 3px solid #9ca3af;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease-out;
+            animation: float 3s ease-in-out infinite;
+            white-space: nowrap;
+            filter: none;
+        }
+        .gem:hover {
+            transform: scale(1.15) !important;
+            filter: drop-shadow(0 0 15px #FFF);
+            animation-play-state: paused;
+        }
+        .gem.revealed-safe {
+            background-color: #06D6A0;
+            filter: drop-shadow(0 0 5px #06D6A0);
+            color: #073B4C;
+            border: 3px solid white;
+        }
+         .gem.revealed-secret {
+            background-color: #FF6B6B;
+            filter: drop-shadow(0 0 5px #FF6B6B);
+            color: #073B4C;
+            border: 3px solid white;
+        }
+        .gem.wiggling {
+            animation: wiggle 0.5s;
+        }
+        .gem.flying {
+            animation: fly-to-chest 1s forwards cubic-bezier(0.5, -0.5, 0.9, 0.5);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg) scale(1.2); }
+            75% { transform: rotate(10deg) scale(1.2); }
+        }
+        @keyframes fly-to-chest {
+            to {
+                top: 70%;
+                left: 50%;
+                transform: scale(0) translateX(-50%);
+                opacity: 0;
+            }
+        }
+        #treasure-vault {
+            transition: transform 0.3s;
+        }
+        #treasure-vault.locking {
+            animation: vault-lock 0.4s;
+        }
+        @keyframes vault-lock {
+          0% { transform: translateX(-50%) scale(1); }
+          50% { transform: translateX(-50%) scale(1.15) rotate(5deg); }
+          100% { transform: translateX(-50%) scale(1); }
+        }
+        #footprint-scene {
+            background: linear-gradient(to right, #e0f2fe, #f0f9ff);
+            border: 2px dashed #118AB2;
+        }
+        .footprint-animation {
+            position: absolute;
+            left: 15%;
+            font-size: 2.5rem;
+            opacity: 0;
+            animation: fly-across 2s ease-in-out forwards;
+        }
+        @keyframes fly-across {
+            0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+            20% { transform: translate(50px, -40px) scale(1) rotate(-20deg); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(350px, 20px) scale(0.5) rotate(360deg); opacity: 0; }
+        }
+        .persistent-footprint {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0;
+            transform-origin: bottom center;
+            animation: place-footprint 0.3s ease-out forwards;
+        }
+        @keyframes place-footprint {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 0.7; }
+        }
+        .flying-icon {
+            position: absolute;
+            bottom: -50px;
+            font-size: 2rem;
+            animation: float-up 5s infinite ease-in;
+            z-index: 20;
+        }
+        @keyframes float-up {
+            0% { bottom: -50px; opacity: 0; transform: scale(0.5); }
+            20% { opacity: 1; transform: scale(1.2); }
+            100% { bottom: 150%; opacity: 0; transform: scale(0.5) rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100" style="background-color: #f0f4f8;">
+
+    <div class="container mx-auto">
+        <div id="slide-container">
+
+            <div class="slide" id="slide-0">
+                <header class="text-center">
+                    <h1 class="text-4xl md:text-6xl font-black" style="color: #073B4C;"><span class="inline-block animate-pulse">🛡️</span> Heróis da Internet Segura! <span class="inline-block animate-pulse">🛡️</span></h1>
+                    <p class="text-lg md:text-xl mt-4 max-w-3xl mx-auto" style="color: #118AB2;">Sua aventura para se tornar um super-herói do mundo digital começa agora!</p>
+                </header>
+            </div>
+
+            <div class="slide hidden" id="slide-1">
+                <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row items-center" style="background-color: #ffffff;">
+                    <div class="text-7xl md:text-8xl font-black" style="color: #FF6B6B;">85%</div>
+                    <div class="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
+                         <h2 class="text-2xl font-bold" style="color: #073B4C;"><span class="inline-block animate-bounce-slow">🎮</span> Das crianças jogam online!</h2>
+                        <p class="mt-2" style="color: #118AB2;">A internet é seu parquinho! Use seus superpoderes e brinque com segurança!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide hidden" id="slide-2">
+                 <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6" style="background-color: #e7f3f8;">
+                    <h2 class="text-3xl font-bold text-center mb-2" style="color: #073B4C;">Desafio do Cofre <span class="inline-block animate-bounce-slow">🏰</span></h2>
+                    <p class="text-center mb-4" style="color: #118AB2;">Um ladrão 🦹 quer seus tesouros! Só uma senha forte pode detê-lo.</p>
+                    <div class="game-scene mb-4">
+                        <div id="thief">🦹</div>
+                        <div id="vault">🏦</div>
+                        <div id="shield">🛡️</div>
+                        <div id="treasure">💎</div>
+                        <div id="zap-container"></div>
+                    </div>
+                    <div id="gameMessage" class="text-center font-bold text-xl h-8 mb-4" style="color: #073B4C;"></div>
+                    <div class="flex flex-col sm:flex-row justify-center gap-4">
+                        <button id="weakPasswordBtn" class="p-4 rounded-lg font-bold text-white text-lg shadow-md hover:scale-105 transition-transform" style="background-color: #FF6B6B;">Senha Fraca</button>
+                        <button id="strongPasswordBtn" class="p-4 rounded-lg font-bold text-white text-lg shadow-md hover:scale-105 transition-transform" style="background-color: #06D6A0;">Senha Forte</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide hidden" id="slide-3">
+                <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6" style="background-color: #fff6e0;">
+                    <h3 class="text-2xl font-bold mb-6 text-center" style="color: #073B4C;">Plano de Ação do Herói Digital</h3>
+                    <div class="flex flex-col md:flex-row items-center justify-around space-y-4 md:space-y-0">
+                        <div class="text-center space-y-2">
+                            <div class="text-7xl animate-bounce-slow">🤔</div>
+                            <p class="font-bold" style="color: #073B4C;">Viu algo<br>estranho?</p>
+                        </div>
+                         <div class="text-5xl font-black md:rotate-0 rotate-90 animate-pulse" style="color: #FFD166;">➡️</div>
+                        <div class="text-center space-y-2">
+                            <div class="text-7xl animate-bounce-slow">✋</div>
+                             <p class="font-bold" style="color: #073B4C;">Não<br>Clique!</p>
+                        </div>
+                         <div class="text-5xl font-black md:rotate-0 rotate-90 animate-pulse" style="color: #FFD166;">➡️</div>
+                        <div class="text-center space-y-2">
+                            <div class="text-7xl animate-bounce-slow">👨‍👩‍👧</div>
+                            <p class="font-bold" style="color: #073B4C;">Avise um<br>Adulto!</p>
+                        </div>
+                         <div class="text-5xl font-black md:rotate-0 rotate-90 animate-pulse" style="color: #FFD166;">➡️</div>
+                         <div class="text-center space-y-2">
+                            <div class="text-7xl animate-bounce-slow">🏆</div>
+                            <p class="font-bold" style="color: #073B4C;">Você está<br>Seguro!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide hidden" id="slide-4">
+                <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6" style="background-color: #e6f7f3;">
+                    <h2 class="text-2xl font-bold text-center mb-4" style="color: #073B4C;">O Cofre do Tesouro Secreto <span class="inline-block animate-bounce-slow">🏦</span></h2>
+                    <p class="text-center mb-4" style="color: #118AB2;">Clique nas gemas para descobrir quais tesouros são secretos!</p>
+                    <div id="treasure-scene" class="relative w-full h-96 rounded-lg overflow-hidden">
+                        <div id="treasure-vault" class="absolute text-8xl" style="bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10;">🏦</div>
+                        <div class="gem" data-type="safe" style="top: 15%; left: 10%;">🎨 Cor Favorita</div>
+                        <div class="gem" data-type="safe" style="top: 35%; left: 70%;">🐶 Nome do Pet</div>
+                        <div class="gem" data-type="safe" style="top: 70%; left: 10%;">🕹️ Apelido</div>
+                        <div class="gem secret" data-type="secret" style="top: 15%; left: 65%;">🏫 Escola</div>
+                        <div class="gem secret" data-type="secret" style="top: 65%; left: 30%;">👤 Nome</div>
+                        <div class="gem secret" data-type="secret" style="top: 35%; left: 20%;">🏠 Endereço</div>
+                        <div class="gem secret" data-type="secret" style="top: 25%; left: 45%;">🎂 Aniversário</div>
+                        <div class="gem secret" data-type="secret" style="top: 55%; left: 55%;">👩‍👧 Nome da Mãe</div>
+                        <div class="gem secret" data-type="secret" style="top: 75%; left: 60%;">👨‍👧 Nome do Pai</div>
+                        <div class="gem secret" data-type="secret" style="top: 50%; left: 5%;">📞 Telefone</div>
+                        <div id="treasure-message" class="absolute top-2 left-1/2 -translate-x-1/2 text-center font-bold text-white bg-black bg-opacity-50 px-4 py-2 rounded-full opacity-0 transition-opacity duration-300"></div>
+                        <button id="reset-treasure-game" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-20 p-2 rounded-lg font-bold text-white text-sm shadow-md" style="background-color: #118AB2;">Jogar de Novo</button>
+                    </div>
+                </div>
+            </div>
+
+             <div class="slide hidden" id="slide-5">
+                <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 flex flex-col justify-center" style="background-color: #ffffff;">
+                    <h2 class="text-2xl font-bold text-center mb-4" style="color: #073B4C;">O Poder da Gentileza Online <span class="text-red-500 inline-block animate-pulse">❤️</span></h2>
+                    <p class="text-center mb-6" style="color: #118AB2;">Ser um herói é ser gentil!</p>
+                    <div class="space-y-4">
+                        <div class="clickable-card p-4 rounded-lg flex items-center" style="background-color: #e6f7f3;">
+                            <span class="text-4xl mr-4">👍</span>
+                            <span class="text-lg font-bold" style="color: #073B4C;">Elogie</span>
+                        </div>
+                         <div class="clickable-card p-4 rounded-lg flex items-center" style="background-color: #fff6e0;">
+                            <span class="text-4xl mr-4">🤝</span>
+                            <span class="text-lg font-bold" style="color: #073B4C;">Ajude</span>
+                        </div>
+                        <div class="clickable-card p-4 rounded-lg flex items-center" style="background-color: #ffeeee;">
+                            <span class="text-4xl mr-4">🗣️</span>
+                            <span class="text-lg font-bold" style="color: #073B4C;">Defenda</span>
+                        </div>
+                        <div class="clickable-card p-4 rounded-lg flex items-center" style="background-color: #e7f3f8;">
+                            <span class="text-4xl mr-4">😊</span>
+                            <span class="text-lg font-bold" style="color: #073B4C;">Seja Educado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="slide hidden" id="slide-6">
+                <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6" style="background-color: #e7f3f8;">
+                    <h2 class="text-2xl font-bold text-center mb-4" style="color: #073B4C;">👣 Sua Pegada Digital 👣</h2>
+                    <p class="text-center mb-6 max-w-2xl mx-auto" style="color: #118AB2;">Clique nas ações para deixar um rastro de herói na internet!</p>
+                    <div id="footprint-scene" class="relative p-4 rounded-lg h-48 flex justify-between items-center overflow-hidden">
+                        <div class="text-5xl animate-bounce-slow z-10">🧍</div>
+                        <div id="footprint-trail-container" class="absolute inset-0"></div>
+                        <div class="text-5xl animate-pulse z-10">🌐</div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-center" id="footprint-actions">
+                        <button data-icon="📸" class="p-2 rounded hover:animate-bounce cursor-pointer" style="background-color: #e6f7f3;">📸<br>Postar foto</button>
+                        <button data-icon="🎮" class="p-2 rounded hover:animate-bounce cursor-pointer" style="background-color: #fff6e0;">🎮<br>Jogar online</button>
+                        <button data-icon="❤️" class="p-2 rounded hover:animate-bounce cursor-pointer" style="background-color: #ffeeee;">❤️<br>Curtir um vídeo</button>
+                        <button data-icon="💬" class="p-2 rounded hover:animate-bounce cursor-pointer" style="background-color: #e7f3f8;">💬<br>Comentar</button>
+                    </div>
+                     <button id="reset-footprint-game" class="hidden mx-auto mt-4 p-2 rounded-lg font-bold text-white text-sm shadow-md" style="background-color: #118AB2;">Jogar de Novo</button>
+                </div>
+            </div>
+
+            <div class="slide hidden" id="slide-7">
+                <footer class="text-center relative overflow-hidden">
+                    <div class="relative z-10">
+                        <p class="font-bold text-4xl" style="color: #073B4C;">Parabéns!</p>
+                        <p class="font-bold text-2xl mt-2" style="color: #073B4C;">Você é um Herói da Internet Segura!</p>
+                        <p class="mt-4 text-lg" style="color: #118AB2;">Continue usando seus superpoderes online.</p>
+                    </div>
+                    <div class="absolute inset-0">
+                        <span class="flying-icon" style="left: 10%; animation-delay: 0s;">🏆</span>
+                        <span class="flying-icon" style="left: 20%; animation-delay: 1.5s;">✨</span>
+                        <span class="flying-icon" style="left: 30%; animation-delay: 3s;">🛡️</span>
+                        <span class="flying-icon" style="left: 40%; animation-delay: 0.5s;">🎉</span>
+                        <span class="flying-icon" style="left: 50%; animation-delay: 2.5s;">👍</span>
+                        <span class="flying-icon" style="left: 60%; animation-delay: 4s;">❤️</span>
+                        <span class="flying-icon" style="left: 70%; animation-delay: 1s;">🎮</span>
+                        <span class="flying-icon" style="left: 80%; animation-delay: 2s;">🌟</span>
+                        <span class="flying-icon" style="left: 90%; animation-delay: 3.5s;">🏆</span>
+                    </div>
+                </footer>
+            </div>
+
+        </div>
+    </div>
+    
+    <div id="navigation-controls" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex gap-4">
+        <button id="prev-btn" class="p-4 rounded-full font-bold text-white text-lg shadow-md hover:scale-105 transition-transform" style="background-color: #FF6B6B;">⬅️ Anterior</button>
+        <button id="next-btn" class="p-4 rounded-full font-bold text-white text-lg shadow-md hover:scale-105 transition-transform" style="background-color: #06D6A0;">Próximo ➡️</button>
+    </div>
+    
+    <div id="page-counter" class="fixed bottom-5 right-5 z-30 font-black text-2xl text-white bg-blue-500 rounded-full w-16 h-16 flex items-center justify-center shadow-lg"></div>
+
+    <script>
+        const thief = document.getElementById('thief');
+        const vault = document.getElementById('vault');
+        const shield = document.getElementById('shield');
+        const treasure = document.getElementById('treasure');
+        const zapContainer = document.getElementById('zap-container');
+        const gameMessage = document.getElementById('gameMessage');
+        const weakPasswordBtn = document.getElementById('weakPasswordBtn');
+        const strongPasswordBtn = document.getElementById('strongPasswordBtn');
+        let isGameRunning = false;
+
+        function resetGameState() {
+            isGameRunning = false;
+            thief.classList.remove('dizzy', 'dance');
+            thief.style.transition = 'all 1s ease-in-out';
+            thief.style.left = '-80px';
+            thief.textContent = '🦹';
+            vault.classList.remove('shake', 'safe');
+            vault.textContent = '🏦';
+            shield.classList.remove('active');
+            treasure.classList.remove('stolen');
+            treasure.style.opacity = '0';
+            gameMessage.textContent = '';
+            weakPasswordBtn.disabled = false;
+            strongPasswordBtn.disabled = false;
+        }
+
+        weakPasswordBtn.addEventListener('click', () => {
+            if (isGameRunning) return;
+            isGameRunning = true;
+            weakPasswordBtn.disabled = true;
+            strongPasswordBtn.disabled = true;
+            gameMessage.style.color = '#073B4C';
+            gameMessage.textContent = 'O ladrão está vindo...';
+            thief.style.left = 'calc(100% - 220px)';
+
+            setTimeout(() => {
+                vault.textContent = '🔓';
+                treasure.style.opacity = '1';
+                treasure.classList.add('stolen');
+                thief.classList.add('dance');
+                thief.innerHTML = ' Mwahaha! 💎';
+                gameMessage.style.color = '#FF6B6B';
+                gameMessage.textContent = 'Oh não! Tesouro roubado!';
+            }, 1200);
+
+            setTimeout(() => {
+                thief.style.transition = 'all 1.5s ease-in-out';
+                thief.style.left = '-80px';
+            }, 3000);
+
+            setTimeout(resetGameState, 4500);
+        });
+
+        strongPasswordBtn.addEventListener('click', () => {
+            if (isGameRunning) return;
+            isGameRunning = true;
+            weakPasswordBtn.disabled = true;
+            strongPasswordBtn.disabled = true;
+            
+            gameMessage.style.color = '#073B4C';
+            gameMessage.textContent = 'Ativando super escudo!';
+
+            setTimeout(() => {
+                 shield.classList.add('active');
+                 vault.classList.add('safe');
+            }, 200);
+            
+            setTimeout(() => {
+                gameMessage.textContent = 'O ladrão está vindo...';
+                thief.style.left = 'calc(100% - 220px)';
+            }, 500);
+
+            setTimeout(() => {
+                vault.classList.add('shake');
+                thief.classList.add('dizzy');
+                thief.textContent = '😵';
+
+                const zap = document.createElement('div');
+                zap.classList.add('zap-effect');
+                zap.textContent = 'ZAP!';
+                zap.style.left = 'calc(100% - 220px)';
+                zap.style.bottom = '50px';
+                zapContainer.appendChild(zap);
+
+                gameMessage.style.color = '#06D6A0';
+                gameMessage.textContent = 'Cofre seguro!';
+            }, 1700);
+
+            setTimeout(resetGameState, 4500);
+        });
+        
+        const gems = document.querySelectorAll('.gem');
+        const treasureVault = document.getElementById('treasure-vault');
+        const treasureMessage = document.getElementById('treasure-message');
+        const resetTreasureBtn = document.getElementById('reset-treasure-game');
+        let treasureGameStarted = false;
+        
+        function showTreasureMessage(text, isSecret) {
+            treasureMessage.textContent = text;
+            treasureMessage.style.backgroundColor = isSecret ? 'rgba(255, 107, 107, 0.9)' : 'rgba(6, 214, 160, 0.9)';
+            treasureMessage.style.opacity = '1';
+            setTimeout(() => {
+                treasureMessage.style.opacity = '0';
+            }, 2000);
+        }
+
+        function initializeGems() {
+             gems.forEach(gem => {
+                gem.classList.remove('revealed-safe', 'revealed-secret', 'wiggling', 'flying');
+                gem.style.opacity = '1';
+                gem.style.pointerEvents = 'auto';
+                gem.style.animationDelay = `${Math.random() * 2}s`;
+                gem.addEventListener('click', handleGemClick, { once: true });
+            });
+            treasureGameStarted = false;
+            resetTreasureBtn.classList.add('hidden');
+        }
+        
+        function handleGemClick(event) {
+            if (!treasureGameStarted) {
+                treasureGameStarted = true;
+                resetTreasureBtn.classList.remove('hidden');
+            }
+
+            const gem = event.currentTarget;
+            gem.classList.add(gem.dataset.type === 'safe' ? 'revealed-safe' : 'revealed-secret');
+            
+            if (gem.dataset.type === 'safe') {
+                gem.classList.add('wiggling');
+                showTreasureMessage('Pode mostrar pros amigos! 👍', false);
+                setTimeout(() => {
+                    gem.classList.remove('wiggling');
+                    gem.addEventListener('click', handleGemClick, { once: true });
+                }, 500);
+            } else {
+                gem.classList.add('flying');
+                gem.style.pointerEvents = 'none';
+                treasureVault.classList.add('locking');
+                showTreasureMessage('Super secreto! Guarde no cofre! 🔒', true);
+                 setTimeout(() => {
+                    treasureVault.classList.remove('locking');
+                }, 400);
+            }
+        }
+
+        resetTreasureBtn.addEventListener('click', initializeGems);
+
+        initializeGems();
+
+        const footprintScene = document.getElementById('footprint-scene');
+        const footprintActions = document.getElementById('footprint-actions');
+        const footprintTrailContainer = document.getElementById('footprint-trail-container');
+        const resetFootprintBtn = document.getElementById('reset-footprint-game');
+        let footprintCount = 0;
+
+        footprintActions.addEventListener('click', (e) => {
+            const actionButton = e.target.closest('button');
+            if (!actionButton) return;
+
+            const icon = actionButton.dataset.icon;
+            
+            const flyingFootprint = document.createElement('div');
+            flyingFootprint.classList.add('footprint-animation');
+            flyingFootprint.textContent = icon;
+            flyingFootprint.style.top = `${20 + Math.random() * 60}%`;
+            footprintScene.appendChild(flyingFootprint);
+
+            const persistentFootprint = document.createElement('div');
+            persistentFootprint.classList.add('persistent-footprint');
+            persistentFootprint.textContent = '🐾';
+            const trailX = 25 + (footprintCount * 10);
+            const trailY = 40 + ((footprintCount % 2) * 20);
+            persistentFootprint.style.left = `${trailX}%`;
+            persistentFootprint.style.top = `${trailY}%`;
+            persistentFootprint.style.transform = `rotate(${-15 + (footprintCount % 2 * 30)}deg)`;
+            footprintTrailContainer.appendChild(persistentFootprint);
+            footprintCount++;
+
+            if (footprintCount > 0) {
+                resetFootprintBtn.classList.remove('hidden');
+            }
+
+            setTimeout(() => {
+                flyingFootprint.remove();
+            }, 2500);
+        });
+
+        resetFootprintBtn.addEventListener('click', () => {
+            footprintTrailContainer.innerHTML = '';
+            footprintCount = 0;
+            resetFootprintBtn.classList.add('hidden');
+        });
+
+        const slides = document.querySelectorAll('.slide');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const pageCounter = document.getElementById('page-counter');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            const totalSlides = slides.length;
+            const totalActivities = totalSlides - 2; 
+
+            slides.forEach((slide, i) => {
+                if (i === index) {
+                    slide.classList.remove('hidden');
+                } else {
+                    slide.classList.add('hidden');
+                }
+            });
+
+            prevBtn.classList.toggle('hidden', index === 0);
+
+            if (index > 0 && index < totalSlides - 1) {
+                pageCounter.classList.remove('hidden');
+                pageCounter.textContent = index;
+            } else {
+                pageCounter.classList.add('hidden');
+            }
+            
+            if (index === totalSlides - 1) {
+                nextBtn.textContent = '🎉 Reiniciar';
+            } else {
+                nextBtn.textContent = 'Próximo ➡️';
+            }
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide === slides.length - 1) {
+                currentSlide = 0;
+                 initializeGems();
+                 footprintTrailContainer.innerHTML = '';
+                 footprintCount = 0;
+                 resetFootprintBtn.classList.add('hidden');
+            } else {
+                currentSlide++;
+            }
+            showSlide(currentSlide);
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        });
+
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>
